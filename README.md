@@ -28,7 +28,7 @@ fork and open those pull requests [here](https://github.com/satvik007/skytable-g
 ## License
 
 This client library is distributed under the permissive
-[Apache-2.0 License](https://github.com/satvik007/skytable-go/blob/next/LICENSE).
+[Apache-2.0 License](https://github.com/satvik007/skytable-go/blob/main/LICENSE).
 
 ## Copyrights
 

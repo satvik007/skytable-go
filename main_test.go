@@ -227,7 +227,7 @@ func startSkytable(port string, args ...string) (*skytableProcess, error) {
 		return nil, err
 	}
 
-	_ = client.CreateTable(ctx, "test15", "(str,binstr)").Err()
+	_ = client.CreateTable(ctx, "test15", "keymap", []string{"str", "binstr"}).Err()
 
 	p := &skytableProcess{process, client}
 	registerProcess(port, p)

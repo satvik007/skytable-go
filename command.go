@@ -443,6 +443,50 @@ func (cmd *Cmd) readReply(rd *proto.Reader) (err error) {
 	return err
 }
 
+//------------------------------------------------------------------------------
+
+type IntCmd struct {
+	baseCmd
+
+	val int64
+}
+
+var _ Cmder = (*IntCmd)(nil)
+
+func NewIntCmd(ctx context.Context, args ...interface{}) *IntCmd {
+	return &IntCmd{
+		baseCmd: baseCmd{
+			ctx:  ctx,
+			args: args,
+		},
+	}
+}
+
+func (cmd *IntCmd) SetVal(val int64) {
+	cmd.val = val
+}
+
+func (cmd *IntCmd) Val() int64 {
+	return cmd.val
+}
+
+func (cmd *IntCmd) Result() (int64, error) {
+	return cmd.val, cmd.err
+}
+
+func (cmd *IntCmd) Uint64() (uint64, error) {
+	return uint64(cmd.val), cmd.err
+}
+
+func (cmd *IntCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *IntCmd) readReply(rd *proto.Reader) (err error) {
+	cmd.val, err = rd.ReadInt()
+	return err
+}
+
 // ------------------------------------------------------------------------------
 
 type SliceCmd struct {
@@ -618,4 +662,58 @@ func (cmd *StringCmd) String() string {
 func (cmd *StringCmd) readReply(rd *proto.Reader) (err error) {
 	cmd.val, err = rd.ReadString()
 	return err
+}
+
+//------------------------------------------------------------------------------
+
+type StringSliceCmd struct {
+	baseCmd
+
+	val []string
+}
+
+var _ Cmder = (*StringSliceCmd)(nil)
+
+func NewStringSliceCmd(ctx context.Context, args ...interface{}) *StringSliceCmd {
+	return &StringSliceCmd{
+		baseCmd: baseCmd{
+			ctx:  ctx,
+			args: args,
+		},
+	}
+}
+
+func (cmd *StringSliceCmd) SetVal(val []string) {
+	cmd.val = val
+}
+
+func (cmd *StringSliceCmd) Val() []string {
+	return cmd.val
+}
+
+func (cmd *StringSliceCmd) Result() ([]string, error) {
+	return cmd.Val(), cmd.Err()
+}
+
+func (cmd *StringSliceCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *StringSliceCmd) readReply(rd *proto.Reader) error {
+	n, err := rd.ReadArrayLen()
+	if err != nil {
+		return err
+	}
+	cmd.val = make([]string, n)
+	for i := 0; i < len(cmd.val); i++ {
+		switch s, err := rd.ReadString(); {
+		case err == Nil:
+			cmd.val[i] = ""
+		case err != nil:
+			return err
+		default:
+			cmd.val[i] = s
+		}
+	}
+	return nil
 }

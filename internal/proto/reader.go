@@ -357,3 +357,19 @@ func (r *Reader) ReadBytes() ([]byte, error) {
 	}
 	return nil, fmt.Errorf("skytable: can't parse %.100q", line)
 }
+
+func (r *Reader) ReadArrayLen() (int, error) {
+	line, err := r.ReadLine()
+	if err != nil {
+		return 0, err
+	}
+	switch line[0] {
+	case RespArray:
+		return replyLen(line)
+	case RespStatus:
+		if _, err := r.readStatus(line); err != nil {
+			return 0, err
+		}
+	}
+	return 0, fmt.Errorf("redis: can't parse array reply: %.100q", line)
+}

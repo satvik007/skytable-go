@@ -26,12 +26,38 @@ type Cmdable interface {
 	InspectKeyspaces(ctx context.Context) *StringSliceCmd
 	InspectTable(ctx context.Context, table string) *StringSliceCmd
 	KeyLen(ctx context.Context, key string) *IntCmd
-	Lget(ctx context.Context, key string, subActions ...interface{}) *Cmd
+	LGet(ctx context.Context, key string) *StringSliceCmd
+	LGetLimit(ctx context.Context, key string, limit int) *StringSliceCmd
+	LGetLen(ctx context.Context, key string) *IntCmd
+	LGetValueAt(ctx context.Context, key string, index int) *StringCmd
+	LGetFirst(ctx context.Context, key string) *StringCmd
+	LGetLast(ctx context.Context, key string) *StringCmd
+	LGetRange(ctx context.Context, key string, start, stop int) *StringSliceCmd
 	ListUser(ctx context.Context) *StringSliceCmd
+	LModPush(ctx context.Context, key string, elements ...interface{}) *StatusCmd
+	LModInsert(ctx context.Context, key string, index int, value interface{}) *StatusCmd
+	LModPop(ctx context.Context, key string, index int) *StringCmd
+	LModRemove(ctx context.Context, key string, index int) *StatusCmd
+	LModClear(ctx context.Context, key string) *StatusCmd
+	LSet(ctx context.Context, key string, values ...interface{}) *StatusCmd
+	LSKeys(ctx context.Context, entity string, limit int) *StringSliceCmd
+	MGet(ctx context.Context, keys ...interface{}) *SliceCmd
+	MKSnap(ctx context.Context, snapName string) *StatusCmd
+	MPop(ctx context.Context, keys ...interface{}) *StringSliceCmd
+	MSet(ctx context.Context, keyValuePairs ...interface{}) *IntCmd
+	MUpdate(ctx context.Context, keyValuePairs ...interface{}) *IntCmd
+	Pop(ctx context.Context, key string) *StringCmd
 	Restore(ctx context.Context, originKey string, username string) *StringCmd
+	SDel(ctx context.Context, keys ...interface{}) *StatusCmd
 	Set(ctx context.Context, key interface{}, value interface{}) *StatusCmd
+	SSet(ctx context.Context, keyValuePairs ...interface{}) *StatusCmd
+	SUpdate(ctx context.Context, keyValuePairs ...interface{}) *StatusCmd
+	SysInfo(ctx context.Context, property string) *StringCmd
+	SysMetric(ctx context.Context, metric string) *StringCmd
 	Update(ctx context.Context, key interface{}, value interface{}) *StatusCmd
 	Use(ctx context.Context, entity string) *StatusCmd
+	USet(ctx context.Context, keyValuePairs ...interface{}) *IntCmd
+	WhereAmI(ctx context.Context) *StringSliceCmd
 	WhoAmI(ctx context.Context) *StringCmd
 }
 
@@ -358,47 +384,99 @@ func (c cmdable) KeyLen(ctx context.Context, key string) *IntCmd {
 	return cmd
 }
 
-// Lget can be used to access the items in a list.
-// Through the sub-actions provided by lget, you can access multiple or individual elements in lists.
+// LGet Returns all the values contained in the provided list, if it exists in the current table.
 //
 // Time complexity: O(n)
 //
-// List of supported sub actions
-//   - pass nothing `LGET <list>`:
-// 			Returns all the values contained in the provided list, if it exists in the current table.
-//    	Time complexity: O(n)
-//   - pass "limit", "<limit>" `LGET <list> limit <limit>`:
-//    	Returns a maximum of limit values from the provided list, if it exists in the current table
-//    	Time complexity: O(n)
-//   - pass "len" `LGET <list> len`:
-//    	Returns the length of the list
-//    	Time complexity: O(1)
-//   - pass "valueat", "<index>" `LGET <list> valueat <index>`:
-//    	Returns the element present at the provided index, if it exists in the given list.
-//    	Time complexity: O(1)
-//   - pass "first" `LGET <list> first`:
-//    	Returns the first element present in the list, if it exists.
-//    	Time complexity: O(1)
-//   - pass "last" `LGET <list> last`:
-//    	Returns the last element present in the list, if it exists.
-//    	Time complexity: O(1)
-//   - pass "range", "<start>" `LGET <list> range <start>`:
-//    	Returns the elements present in the list starting from the provided index, if it exists.
-//    	Time complexity: O(n)
-//   - pass "range", "<start>", "<end>" `LGET <list> range <start> <stop>`:
-//    	Returns items in the given range.
-//    	Time complexity: O(n)
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+func (c cmdable) LGet(ctx context.Context, key string) *StringSliceCmd {
+	cmd := NewStringSliceCmd(ctx, "LGET", key)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetLimit Returns a maximum of limit values from the provided list, if it exists in the current table
+//
+// Time complexity: O(n)
 //
 // Operation can throw error.
-//   - 1	Nil	The client asked for a non-existent object
-//   - string "bad-list-index" if the index is out of range
-//   - string "list-is-empty" if the list is empty and you query for "first" or "last"
-func (c cmdable) Lget(ctx context.Context, key string, subActions ...interface{}) *Cmd {
-	args := make([]interface{}, 1, 2+len(subActions))
-	args[0] = "LGET"
-	args[1] = key
-	args = append(args, subActions...)
-	cmd := NewCmd(ctx, args...)
+// 	- 1 Nil	The client asked for a non-existent object
+func (c cmdable) LGetLimit(ctx context.Context, key string, limit int) *StringSliceCmd {
+	cmd := NewStringSliceCmd(ctx, "LGET", key, "limit", limit)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetLen Returns the length of the list
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+func (c cmdable) LGetLen(ctx context.Context, key string) *IntCmd {
+	cmd := NewIntCmd(ctx, "LGET", key, "len")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetValueAt Returns the element present at the provided index, if it exists in the given list.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//	- string "bad-list-index"	The index is out of range
+func (c cmdable) LGetValueAt(ctx context.Context, key string, index int) *StringCmd {
+	cmd := NewStringCmd(ctx, "LGET", key, "valueat", index)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetFirst Returns the first element present in the list, if it exists.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - string "list-is-empty"
+func (c cmdable) LGetFirst(ctx context.Context, key string) *StringCmd {
+	cmd := NewStringCmd(ctx, "LGET", key, "first")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetLast Returns the last element present in the list, if it exists.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - string "list-is-empty"
+func (c cmdable) LGetLast(ctx context.Context, key string) *StringCmd {
+	cmd := NewStringCmd(ctx, "LGET", key, "last")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LGetRange Returns items in the given range.
+// If stop is provided as -1, all the elements from that index are returned.
+// If a value for stop is provided, then a subarray is returned
+// array[start:stop] -> [start, stop)
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//	- string "bad-list-index"	The index is out of range
+func (c cmdable) LGetRange(ctx context.Context, key string, start int, stop int) *StringSliceCmd {
+	args := make([]interface{}, 0, 5)
+	args = append(args, "LGET", key, "range", start)
+	if stop > -1 {
+		args = append(args, stop)
+	}
+
+	cmd := NewStringSliceCmd(ctx, args...)
 	_ = c(ctx, cmd)
 	return cmd
 }
@@ -408,6 +486,214 @@ func (c cmdable) Lget(ctx context.Context, key string, subActions ...interface{}
 // Time complexity: O(1)
 func (c cmdable) ListUser(ctx context.Context) *StringSliceCmd {
 	cmd := NewStringSliceCmd(ctx, "AUTH", "LISTUSER")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LModPush Appends the elements to the end of the provided list, if it exists.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1  Nil	The client asked for a non-existent object
+//  - 5  Server error  An error occurred on the server side
+func (c cmdable) LModPush(ctx context.Context, key string, elements ...interface{}) *StatusCmd {
+	args := make([]interface{}, 0, 3+len(elements))
+	args = append(args, "LMOD", key, "push")
+	args = append(args, elements...)
+	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LModInsert Inserts the element to the provided index,
+// if it is valid while shifting elements to the right if required.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - 5 Server error  An error occurred on the server side
+//	- string "bad-list-index"	The index is out of range
+func (c cmdable) LModInsert(ctx context.Context, key string, index int, value interface{}) *StatusCmd {
+	cmd := NewStatusCmd(ctx, "LMOD", key, "insert", index, value)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LModPop Removes the element from the end of the list if index<0 or from the provided index
+// while shifting elements to the right if required.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - 5 Server error  An error occurred on the server side
+//  - string "bad-list-index"	The index is out of range
+func (c cmdable) LModPop(ctx context.Context, key string, index int) *StringCmd {
+	args := make([]interface{}, 0, 4)
+	args = append(args, "LMOD", key, "pop")
+	if index > 0 {
+		args = append(args, index)
+	}
+	cmd := NewStringCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LModRemove Removes the element at the provided index from the list, shifting elements to the right if required.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - 5 Server error  An error occurred on the server side
+//  - string "bad-list-index"	The index is out of range
+func (c cmdable) LModRemove(ctx context.Context, key string, index int) *StatusCmd {
+	cmd := NewStatusCmd(ctx, "LMOD", key, "remove", index)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LModClear Removes all the elements present in the list.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - 5 Server error  An error occurred on the server side
+func (c cmdable) LModClear(ctx context.Context, key string) *StatusCmd {
+	cmd := NewStatusCmd(ctx, "LMOD", key, "clear")
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LSet Creates a list with the provided values,
+// or simply creates an empty list if it doesn't already exist in the table.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 1 Nil	The client asked for a non-existent object
+//  - 5 Server error  An error occurred on the server side
+func (c cmdable) LSet(ctx context.Context, key string, values ...interface{}) *StatusCmd {
+	args := make([]interface{}, 0, 2+len(values))
+	args = append(args, "LSET", key)
+	args = append(args, values...)
+	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// LSKeys Returns a flat string array of keys present in the current table or in the provided entity.
+// If no <limit> is given, then a maximum of 10 keys are returned.
+// If a limit is specified, then a maximum of <limit> keys are returned. The order of keys is meaningless.
+// For current table pass entity as ""
+// For default limit 10, you can pass limit as "0"
+//
+// Time complexity: O(n)
+func (c cmdable) LSKeys(ctx context.Context, entity string, limit int) *StringSliceCmd {
+	args := make([]interface{}, 0, 3)
+	args = append(args, "LSKEYS")
+	if entity != "" {
+		args = append(args, entity)
+	}
+	if limit > 0 {
+		args = append(args, limit)
+	}
+	cmd := NewStringSliceCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// MGet Get the value of 'n' keys from the current table, if they exist.
+//
+// Time complexity: O(n)
+func (c cmdable) MGet(ctx context.Context, keys ...interface{}) *SliceCmd {
+	args := make([]interface{}, 0, 1+len(keys))
+	args = append(args, "MGET", keys)
+	cmd := NewSliceCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// MKSnap This action can be used to create a snapshot.
+// Do note that this action requires snapshotting to be enabled on the server side,
+// before it can create snapshots. If you want to create snapshots without snapshots being enabled
+// on the server-side, pass a second argument <SNAPNAME> to specify a snapshot name and a snapshot will
+// be created in a folder called rsnap under your data directory. For more information on snapshots,
+// read this document https://docs.skytable.io/snapshots
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- string "err-snapshot-disabled" Snapshots have been disabled on the server-side
+//	- string "err-snapshot-busy" A snapshot operation is already in progress
+func (c cmdable) MKSnap(ctx context.Context, snapName string) *StatusCmd {
+	args := make([]interface{}, 0, 2)
+	args = append(args, "MKSNAP")
+	if snapName != "" {
+		args = append(args, snapName)
+	}
+	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// MPop Deletes and returns the values of the provided 'n' keys from the current table.
+// If the database is poisoned, this will return a server error
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 5	Server error	An error occurred on the server side
+func (c cmdable) MPop(ctx context.Context, keys ...interface{}) *StringSliceCmd {
+	args := make([]interface{}, 0, 1+len(keys))
+	args = append(args, "MOP", keys)
+	cmd := NewStringSliceCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// MSet Set the value of 'n' keys in the current table, if they don't already exist.
+// This will return the number of keys that were set as an unsigned integer.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 5	Server error	An error occurred on the server side
+func (c cmdable) MSet(ctx context.Context, keyValuePairs ...interface{}) *IntCmd {
+	args := make([]interface{}, 0, 1+len(keyValuePairs))
+	args = append(args, "MSET", keyValuePairs)
+	cmd := NewIntCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// MUpdate Update the value of 'n' keys in the current table, if they already exist.
+// This will return the number of keys that were updated as an unsigned integer.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// 	- 5	Server error	An error occurred on the server side
+func (c cmdable) MUpdate(ctx context.Context, keyValuePairs ...interface{}) *IntCmd {
+	args := make([]interface{}, 0, 1+len(keyValuePairs))
+	args = append(args, "MUPDATE", keyValuePairs)
+	cmd := NewIntCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// Pop Deletes and return the value of the provided key from the current table.
+// If the database is poisoned, this will return a server error.
+//
+// Time complexity: O(1)
+//
+// Operation can throw error.
+// 	- 5	Server error	An error occurred on the server side
+func (c cmdable) Pop(ctx context.Context, key string) *StringCmd {
+	cmd := NewStringCmd(ctx, "POP", key)
 	_ = c(ctx, cmd)
 	return cmd
 }
@@ -429,6 +715,22 @@ func (c cmdable) Restore(ctx context.Context, originKey, username string) *Strin
 	} else {
 		cmd = NewStringCmd(ctx, "RESTORE", originKey, username)
 	}
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// SDel Delete all keys if all of the keys exist in the current table.
+// Do note that if a single key doesn't exist, then a Nil code is returned.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+//  - 1 Nil	The client asked for a non-existent object
+// 	- 5	Server error	An error occurred on the server side
+func (c cmdable) SDel(ctx context.Context, keys ...interface{}) *StatusCmd {
+	args := make([]interface{}, 0, 1+len(keys))
+	args = append(args, "SDEL", keys)
+	cmd := NewStatusCmd(ctx, args...)
 	_ = c(ctx, cmd)
 	return cmd
 }
@@ -460,6 +762,62 @@ func (c cmdable) Set(ctx context.Context, key interface{}, value interface{}) *S
 	args[2] = value
 
 	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// SSet Set all keys to the given values only if all of them don't exist in the current table
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// - 2	Overwrite error	The client tried to overwrite data
+// - 5	Server error	  An error occurred on the server side
+func (c cmdable) SSet(ctx context.Context, keyValuePairs ...interface{}) *StatusCmd {
+	args := make([]interface{}, 0, 1+len(keyValuePairs))
+	args = append(args, "SSET", keyValuePairs)
+	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// SUpdate Update all keys if all of the keys exist in the current table.
+// Do note that if a single key doesn't exist, then a Nil code is returned.
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// - 1 Nil	The client asked for a non-existent object
+// - 5	Server error	An error occurred on the server side
+func (c cmdable) SUpdate(ctx context.Context, keyValuePairs ...interface{}) *StatusCmd {
+	args := make([]interface{}, 0, 1+len(keyValuePairs))
+	args = append(args, "SUPDATE", keyValuePairs)
+	cmd := NewStatusCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// SysInfo Returns static properties of the system, i.e properties that do not change during runtime.
+//
+// The following properties are available:
+// 	- version: Returns the server version (String)
+// 	- protocol: Returns the protocol version string (String)
+// 	- protover: Returns the protocol version (float)
+//
+// Time complexity: O(1)
+func (c cmdable) SysInfo(ctx context.Context, property string) *StringCmd {
+	cmd := NewStringCmd(ctx, "SYS", "INFO", property)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// SysMetric Returns dynamic properties of the system, i.e metrics are properties that can change during runtime.
+//
+// The following metrics are available:
+// 	- health: Returns "good" or "critical" depending on the system state (String)
+// 	- storage: Returns bytes used for on-disk storage (uint64)
+func (c cmdable) SysMetric(ctx context.Context, metric string) *StringCmd {
+	cmd := NewStringCmd(ctx, "SYS", "METRIC", metric)
 	_ = c(ctx, cmd)
 	return cmd
 }
@@ -532,6 +890,30 @@ func (c cmdable) Update(ctx context.Context, key interface{}, value interface{})
 //		}
 func (c cmdable) Use(ctx context.Context, entity string) *StatusCmd {
 	cmd := NewStatusCmd(ctx, "USE", entity)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// USet SET all keys if they don't exist, or UPDATE them if they do exist.
+// This operation performs USETs in the current table
+//
+// Time complexity: O(n)
+//
+// Operation can throw error.
+// - 5  Server error	 An error occurred on the server side
+func (c cmdable) USet(ctx context.Context, keyValuePairs ...interface{}) *IntCmd {
+	args := make([]interface{}, 0, 1+len(keyValuePairs))
+	args = append(args, "USET", keyValuePairs)
+	cmd := NewIntCmd(ctx, args...)
+	_ = c(ctx, cmd)
+	return cmd
+}
+
+// WhereAmI Returns an array with either the name of the current keyspace as the first element
+// or if a default table is set, then it returns the keyspace name as the first element
+// and the table name as the second element
+func (c cmdable) WhereAmI(ctx context.Context) *StringSliceCmd {
+	cmd := NewStringSliceCmd(ctx, "WHEREAMI")
 	_ = c(ctx, cmd)
 	return cmd
 }

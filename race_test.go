@@ -21,7 +21,7 @@ var _ = Describe("races", func() {
 	BeforeEach(func() {
 		client = skytable.NewClient(skytableOptions())
 
-		for i := 0; i <= 10; i++ {
+		for i := 0; i <= 15; i++ {
 			Expect(client.FlushDB(ctx, "test"+strconv.Itoa(i)).Err()).To(BeNil())
 		}
 

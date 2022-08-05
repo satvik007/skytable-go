@@ -9,59 +9,35 @@ import (
 )
 
 func BenchmarkReader_ParseReply_Status(b *testing.B) {
-	benchmarkParseReply(b, "+OK\n", false)
+	benchmarkParseReply(b, "!1\n0\n", false)
 }
 
 func BenchmarkReader_ParseReply_Int(b *testing.B) {
-	benchmarkParseReply(b, ":1\n", false)
+	benchmarkParseReply(b, ":2\n10\n", false)
 }
 
 func BenchmarkReader_ParseReply_Float(b *testing.B) {
-	benchmarkParseReply(b, ",123.456\n", false)
-}
-
-func BenchmarkReader_ParseReply_Bool(b *testing.B) {
-	benchmarkParseReply(b, "#t\n", false)
-}
-
-func BenchmarkReader_ParseReply_BigInt(b *testing.B) {
-	benchmarkParseReply(b, "(3492890328409238509324850943850943825024385\n", false)
+	benchmarkParseReply(b, "%7\n123.456\n", false)
 }
 
 func BenchmarkReader_ParseReply_Error(b *testing.B) {
-	benchmarkParseReply(b, "-Error message\n", true)
+	benchmarkParseReply(b, "!13\nError message\n", true)
 }
 
 func BenchmarkReader_ParseReply_Nil(b *testing.B) {
-	benchmarkParseReply(b, "_\n", true)
+	benchmarkParseReply(b, "!1\n1\n", true)
 }
 
-func BenchmarkReader_ParseReply_BlobError(b *testing.B) {
-	benchmarkParseReply(b, "!21\nSYNTAX invalid syntax", true)
+func BenchmarkReader_ParseReply_BinaryString(b *testing.B) {
+	benchmarkParseReply(b, "?21\nSYNTAX invalid syntax\n", false)
 }
 
 func BenchmarkReader_ParseReply_String(b *testing.B) {
-	benchmarkParseReply(b, "$5\nhello\n", false)
+	benchmarkParseReply(b, "+5\nhello\n", false)
 }
 
-func BenchmarkReader_ParseReply_Verb(b *testing.B) {
-	benchmarkParseReply(b, "$9\ntxt:hello\n", false)
-}
-
-func BenchmarkReader_ParseReply_Slice(b *testing.B) {
-	benchmarkParseReply(b, "*2\n$5\nhello\n$5\nworld\n", false)
-}
-
-func BenchmarkReader_ParseReply_Set(b *testing.B) {
-	benchmarkParseReply(b, "~2\n$5\nhello\n$5\nworld\n", false)
-}
-
-func BenchmarkReader_ParseReply_Push(b *testing.B) {
-	benchmarkParseReply(b, ">2\n$5\nhello\n$5\nworld\n", false)
-}
-
-func BenchmarkReader_ParseReply_Attr(b *testing.B) {
-	benchmarkParseReply(b, "%1\n+key\n+value\n+hello\n", false)
+func BenchmarkReader_ParseReply_Array(b *testing.B) {
+	benchmarkParseReply(b, "&2\n+5\nhello\n+5\nworld\n", false)
 }
 
 func TestReader_ReadLine(t *testing.T) {

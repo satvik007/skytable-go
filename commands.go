@@ -142,9 +142,10 @@ func (c cmdable) CreateKeyspace(ctx context.Context, entity string) *StatusCmd {
 // CreateTable creates a new table.
 //
 // Transactional: Not yet
+//
 // Time complexity: O(1)
 //
-// Currently only keymap model is supported.
+// Currently only keymap model is supported in skytable.
 //
 // The keymap model
 // A keymap is like an associated array: it maps a key to a value.

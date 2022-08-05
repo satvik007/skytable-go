@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -36,10 +37,9 @@ func registerProcess(port string, p *skytableProcess) {
 }
 
 var _ = BeforeSuite(func() {
-	// var err error
-
-	// skytableMain, err = startSkytable(skytablePort)
-	// Expect(err).NotTo(HaveOccurred())
+	var err error
+	skytableMain, err = startSkytable(skytablePort)
+	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -135,11 +135,14 @@ func eventually(fn func() error, timeout time.Duration) error {
 	}
 }
 
-func execCmd(name string, args ...string) (*os.Process, error) {
+func execCmd(name string, workDir string, args ...string) (*os.Process, error) {
 	cmd := exec.Command(name, args...)
 	if testing.Verbose() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+	}
+	if workDir != "" {
+		cmd.Dir = workDir
 	}
 	return cmd.Process, cmd.Start()
 }
@@ -185,30 +188,30 @@ func (p *skytableProcess) Close() error {
 }
 
 var (
-	skytableServerBin, _ = filepath.Abs(filepath.Join("/usr", "bin", "skyd"))
+	skytableServerBin, _ = filepath.Abs(filepath.Join("testdata", "skytable", "skyd"))
 	// skytableServerConf, _ = filepath.Abs(filepath.Join("testdata", "skytable", "skytable.conf"))
 )
 
-// func skytableDir(port string) (string, error) {
-// 	dir, err := filepath.Abs(filepath.Join("testdata", "instances", port))
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	if err := os.RemoveAll(dir); err != nil {
-// 		return "", err
-// 	}
-// 	if err := os.MkdirAll(dir, 0o775); err != nil {
-// 		return "", err
-// 	}
-// 	return dir, nil
-// }
+func skytableDir(port string) (string, error) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "instances", port))
+	if err != nil {
+		return "", err
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o775); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
 
 func startSkytable(port string, args ...string) (*skytableProcess, error) {
-	// dir, err := skytableDir(port)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//
+	dir, err := skytableDir(port)
+	if err != nil {
+		return nil, err
+	}
+
 	// if err := exec.Command("cp", "-f", skytableServerConf, dir).Run(); err != nil {
 	// 	return nil, err
 	// }
@@ -216,7 +219,7 @@ func startSkytable(port string, args ...string) (*skytableProcess, error) {
 	// baseArgs := []string{filepath.Join(dir, "skytable.conf"), "--port", port, "--dir", dir}
 
 	var baseArgs []string
-	process, err := execCmd(skytableServerBin, append(baseArgs, args...)...)
+	process, err := execCmd(skytableServerBin, dir, append(baseArgs, args...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +230,9 @@ func startSkytable(port string, args ...string) (*skytableProcess, error) {
 		return nil, err
 	}
 
-	_ = client.CreateTable(ctx, "test15", "keymap", []string{"str", "binstr"}).Err()
+	for i := 0; i <= 15; i++ {
+		_ = client.CreateTable(ctx, "test"+strconv.Itoa(i), "keymap", []string{"str", "binstr"}).Err()
+	}
 
 	p := &skytableProcess{process, client}
 	registerProcess(port, p)

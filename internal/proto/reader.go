@@ -38,14 +38,17 @@ var CodeToErrorMap = map[int64]SkytableError{
 }
 
 const (
-	RespString    = '+' // +<length>\n<bytes>\n
-	RespArray     = '&' // &<c>\n<elements>
-	RespAnyArray  = '~' // ~<c>\n<elements>
-	RespInt       = ':' // :<length>\n<number>
-	RespFloat     = '%' // %<length>\n<bytes>\n
-	RespBlob      = '?' // ?<length>\n<bytes>
-	RespStatus    = '!' // !<length>\n<statusCode>\n
-	RespMetaFrame = '*' // *<number>\n
+	RespString            = '+' // +<length>\n<bytes>\n
+	RespArray             = '&' // &<c>\n<elements>
+	RespAnyArray          = '~' // ~<c>\n<elements>
+	RespFlatArray         = '_' // _<c>\n<elements>
+	RespTypedArray        = '@' // @<c>\n<elements>
+	RespTypedNonNullArray = '^' // ^<c>\n<elements>
+	RespInt               = ':' // :<length>\n<number>
+	RespFloat             = '%' // %<length>\n<bytes>\n
+	RespBlob              = '?' // ?<length>\n<bytes>
+	RespStatus            = '!' // !<length>\n<statusCode>\n
+	RespMetaFrame         = '*' // *<number>\n
 )
 
 type SkytableError string

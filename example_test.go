@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+
 	"github.com/satvik007/skytable-go"
 )
 
@@ -13,7 +15,8 @@ var (
 	rdb *skytable.Client
 )
 
-func init() {
+var _ = Describe("example_test", func() {
+
 	rdb = skytable.NewClient(&skytable.Options{
 		Addr:         "localhost:2003",
 		DialTimeout:  10 * time.Second,
@@ -22,42 +25,60 @@ func init() {
 		PoolSize:     10,
 		PoolTimeout:  30 * time.Second,
 	})
-	rdb.FlushDB(ctx, "")
-}
 
-func ExampleNewClient() {
-	rdb := skytable.NewClient(&skytable.Options{
-		Addr: "localhost:2003", // use default Addr
+	BeforeEach(func() {
+		rdb.FlushDB(ctx, "")
 	})
 
-	pong, err := rdb.Heya(ctx, "").Result()
-	fmt.Println(pong, err)
-	// Output: HEY! <nil>
-}
+	It("ExampleNewClient", func() {
+		rdb := skytable.NewClient(&skytable.Options{
+			Addr: "localhost:2003", // use default Addr
+		})
 
-func ExampleClient() {
-	err := rdb.Set(ctx, "key", "value").Err()
-	if err != nil {
-		panic(err)
-	}
+		pong, err := rdb.Heya(ctx, "").Result()
+		fmt.Println(pong, err)
+		// Output: HEY! <nil>
+	})
 
-	val, err := rdb.Get(ctx, "key").Result()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("key", val)
+	It("ExampleClient", func() {
+		err := rdb.Set(ctx, "key", "value").Err()
+		if err != nil {
+			panic(err)
+		}
 
-	val2, err := rdb.Get(ctx, "missing_key").Result()
-	if err == skytable.Nil {
-		fmt.Println("missing_key does not exist")
-	} else if err != nil {
-		panic(err)
-	} else {
-		fmt.Println("missing_key", val2)
-	}
-	// Output: key value
-	// missing_key does not exist
-}
+		val, err := rdb.Get(ctx, "key").Result()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("key", val)
+
+		val2, err := rdb.Get(ctx, "missing_key").Result()
+		if err == skytable.Nil {
+			fmt.Println("missing_key does not exist")
+		} else if err != nil {
+			panic(err)
+		} else {
+			fmt.Println("missing_key", val2)
+		}
+		// Output: key value
+		// missing_key does not exist
+	})
+
+	It("ExampleClient_Set", func() {
+		// Last argument is expiration. Zero means the key has no
+		// expiration time.
+		err := rdb.Set(ctx, "key", "value").Err()
+		if err != nil {
+			panic(err)
+		}
+
+		// key2 will expire in an hour.
+		err = rdb.Set(ctx, "key2", "value").Err()
+		if err != nil {
+			panic(err)
+		}
+	})
+})
 
 // func ExampleConn() {
 //   conn := rdb.Conn()
@@ -79,21 +100,6 @@ func ExampleClient() {
 //   fmt.Println(s)
 //   // Output: foobar
 // }
-
-func ExampleClient_Set() {
-	// Last argument is expiration. Zero means the key has no
-	// expiration time.
-	err := rdb.Set(ctx, "key", "value").Err()
-	if err != nil {
-		panic(err)
-	}
-
-	// key2 will expire in an hour.
-	err = rdb.Set(ctx, "key2", "value").Err()
-	if err != nil {
-		panic(err)
-	}
-}
 
 // func ExampleClient_SetEx() {
 //   err := rdb.SetEx(ctx, "key", "value").Err()
